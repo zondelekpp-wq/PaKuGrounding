@@ -1,7 +1,7 @@
 /* PaKuGrounding – offline grounding app. All data stays on the device. */
 'use strict';
 (() => {
-  const APP_VERSION = '1.0.1';
+  const APP_VERSION = '1.0.2';
   const CONTACT_EMAIL = 'zondelek.p.p@gmail.com';                       // e.g. 'kontakt@example.com' – shown in Terms & privacy when set
   const BMC_URL = 'https://buymeacoffee.com/Hieronim';
   const LANGS = [['en', 'English'], ['pl', 'Polski'], ['de', 'Deutsch'], ['es', 'Español'], ['fr', 'Français'], ['zh', '中文'], ['uk', 'Українська']];
