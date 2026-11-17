@@ -1,6 +1,6 @@
 /* PaKuGrounding service worker – caches the whole app so it works fully offline.
    When you change any file, bump VERSION so users get the update. */
-const VERSION = '1.0.3';
+const VERSION = '1.2.1';
 const CACHE = 'pakugrounding-' + VERSION;
 const ASSETS = [
   './', './index.html', './app.js', './i18n.js', './manifest.webmanifest',

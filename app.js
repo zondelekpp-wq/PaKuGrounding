@@ -1,7 +1,9 @@
 /* PaKuGrounding – offline grounding app. All data stays on the device. */
 'use strict';
 (() => {
-  const APP_VERSION = '1.0.3';
+  const APP_VERSION = '1.2.1';
+  const DEFAULT_ACCENT = '#7a5ca8';
+  const ACCENTS = [['lavender', '#7a5ca8'], ['blue', '#3f6fb5'], ['teal', '#2f8a85'], ['green', '#4f8a4f'], ['rose', '#b0507a'], ['amber', '#b5762a'], ['grey', '#646a78']];
   const APP_URL = 'https://zondelekpp-wq.github.io/PaKuGrounding/';   // the QR code in qr.svg points here
   const CONTACT_EMAIL = 'zondelek.p.p@gmail.com';                       // e.g. 'kontakt@example.com' – shown in Terms & privacy when set
   const BMC_URL = 'https://buymeacoffee.com/Hieronim';
@@ -28,7 +30,7 @@
     breathPattern: 'calm', breathMinutes: 2,
     name: '', place: '', statement: '', emergency: '112',
     sosSteps: { here: true, breathe: true, senses: true, phrase: true }, sosRecId: null,
-    phrases: [], people: [], tipDismissed: false, offlineToastShown: false
+    phrases: [], people: [], tipDismissed: false, offlineToastShown: false, accent: DEFAULT_ACCENT
   });
 
   function normalize(p) {
@@ -48,6 +50,8 @@
     if (!['calm', 'night', 'contrast'].includes(d.theme)) d.theme = 'calm';
     if (!['normal', 'large', 'xl'].includes(d.textSize)) d.textSize = 'normal';
     if (!LENGTHS.includes(d.breathMinutes)) d.breathMinutes = 2;
+    if (!/^#[0-9a-f]{6}$/i.test(d.accent)) d.accent = DEFAULT_ACCENT;
+    d.accent = d.accent.toLowerCase();
     return d;
   }
   function load() { try { return normalize(JSON.parse(localStorage.getItem(KEY) || 'null')); } catch (e) { return DEFAULTS(); } }
@@ -105,6 +109,8 @@
     star: sv('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>'),
     coffee: sv('<path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17M8 3v3M12 3v3"/>'),
     upload: sv('<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>'),
+    info: sv('<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>'),
+    sound: sv('<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>'),
     share: sv('<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>'),
     link: sv('<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'),
     download: sv('<path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>')
@@ -143,17 +149,36 @@
 
   /* ---------- audio ---------- */
   let player = null, playerUrl = null, playingId = null;
+  /* lock-screen / notification media controls */
+  function setMediaSession(title, handlers) {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({ title, artist: 'PaKuGrounding',
+        artwork: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }] });
+      for (const a of ['play', 'pause', 'stop']) { try { navigator.mediaSession.setActionHandler(a, (handlers && handlers[a]) || null); } catch (e) { } }
+    } catch (e) { }
+  }
+  function clearMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+    try { navigator.mediaSession.metadata = null; for (const a of ['play', 'pause', 'stop']) navigator.mediaSession.setActionHandler(a, null); } catch (e) { }
+  }
   function stopAudio() {
-    if (player) { try { player.pause(); } catch (e) { } player = null; }
+    if (player) { try { player.pause(); } catch (e) { } player = null; clearMediaSession(); }
     if (playerUrl) { URL.revokeObjectURL(playerUrl); playerUrl = null; }
     playingId = null;
   }
-  function playBlob(blob, id, onEnd) {
+  function playBlob(blob, id, onEnd, title) {
     stopAudio();
     playerUrl = URL.createObjectURL(blob);
     player = new Audio(playerUrl);
     playingId = id;
+    const p = player;
     player.onended = () => { stopAudio(); if (onEnd) onEnd(); };
+    setMediaSession(title || 'PaKuGrounding', {
+      play: () => p.play().catch(() => { }),
+      pause: () => p.pause(),
+      stop: () => { stopAudio(); if (onEnd) onEnd(); }
+    });
     return player.play().catch(() => { if (onEnd) onEnd(); });
   }
   let actx = null;
@@ -172,12 +197,38 @@
   }
 
   /* ---------- look & feel ---------- */
+  /* user colour: derive a full, readable palette from one accent colour */
+  const hexRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+  const rgbHex = a => '#' + a.map(v => Math.round(Math.max(0, Math.min(255, v))).toString(16).padStart(2, '0')).join('');
+  const mixc = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+  const lum = c => { const s = c.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * s[0] + 0.7152 * s[1] + 0.0722 * s[2]; };
+  const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const PALETTE_VARS = ['--primary', '--primary-2', '--bg', '--surface', '--surface2', '--border', '--ring'];
+  function palette(hex, theme) {
+    const W = [255, 255, 255], B = [0, 0, 0], K = [16, 13, 22];
+    let a = hexRgb(hex);
+    if (theme === 'calm') {
+      for (let i = 0; i < 30 && ratio(a, W) < 4.6; i++) a = mixc(a, B, 0.07);   // white text must stay readable on the accent
+      return { '--primary': a, '--primary-2': mixc(a, W, 0.3), '--bg': mixc(a, W, 0.94), '--surface': W, '--surface2': mixc(a, W, 0.87), '--border': mixc(a, W, 0.8), '--ring': mixc(a, W, 0.5) };
+    }
+    const bg = mixc(a, K, 0.92);
+    let p = a;
+    for (let i = 0; i < 30 && ratio(p, bg) < 6; i++) p = mixc(p, W, 0.08);              // accent must stand out on the dark background
+    return { '--primary': p, '--primary-2': mixc(p, K, 0.25), '--bg': bg, '--surface': mixc(a, K, 0.86), '--surface2': mixc(a, K, 0.8), '--border': mixc(a, K, 0.72), '--ring': mixc(p, K, 0.4) };
+  }
   function applyLook() {
     const r = document.documentElement;
     r.dataset.theme = S.theme; r.dataset.size = S.textSize; r.dataset.motion = S.reduceMotion ? 'reduce' : 'full';
     r.lang = S.lang === 'zh' ? 'zh-CN' : S.lang;
+    PALETTE_VARS.forEach(v => r.style.removeProperty(v));
+    let bg = { calm: '#f5f1fb', night: '#14111b', contrast: '#000000' }[S.theme];
+    if (S.theme !== 'contrast' && S.accent !== DEFAULT_ACCENT) {
+      const p = palette(S.accent, S.theme);
+      for (const k in p) r.style.setProperty(k, rgbHex(p[k]));
+      bg = rgbHex(p['--bg']);
+    }
     const m = $('meta[name="theme-color"]');
-    if (m) m.content = { calm: '#f5f1fb', night: '#14111b', contrast: '#000000' }[S.theme];
+    if (m) m.content = bg;
   }
 
   /* ---------- toast & modal ---------- */
@@ -217,6 +268,12 @@
       }));
   }
 
+  async function copyText(s) {
+    try { await navigator.clipboard.writeText(s); return true; } catch (err) {
+      const ta = document.createElement('textarea'); ta.value = s; document.body.appendChild(ta); ta.select();
+      let ok = false; try { ok = document.execCommand('copy'); } catch (e2) { } ta.remove(); return ok;
+    }
+  }
   function shareModal() {
     modal(`<h2 class="modal-title">${ICON.share}<span>${te('share_title')}</span></h2>
       <div class="qr-box"><img src="qr.svg" alt="QR: ${esc(APP_URL)}" width="240" height="240"></div>
@@ -328,63 +385,118 @@
           bar.innerHTML = `<button class="icon-btn" id="sap" aria-label="${te(playing ? 'pause' : 'play')}">${playing ? ICON.pause : ICON.play}</button><span>${te('sos_playing', { name: r.name })}</span>`;
           $('#sap', bar).onclick = () => {
             if (player && playingId === r.id) { if (player.paused) { player.play().catch(() => { }); paint(true); } else { player.pause(); paint(false); } }
-            else { playBlob(r.blob, r.id, () => paint(false)); paint(true); }
+            else { playBlob(r.blob, r.id, () => paint(false), r.name); paint(true); }
           };
         };
-        playBlob(r.blob, r.id, () => paint(false)); paint(true);
+        playBlob(r.blob, r.id, () => paint(false), r.name); paint(true);
       }).catch(() => { });
     }
   }
 
+  /* ---------- breathing sound guide: pre-rendered audio, so it keeps playing with the screen locked ---------- */
+  function breathSchedule(pattern, minutes) {
+    const ph = PATTERNS[pattern], total = minutes * 60, phases = []; let t0 = 0;
+    while (t0 < total) for (const [kind, dur] of ph) { phases.push({ kind, start: t0, dur }); t0 += dur; }
+    return { phases, length: t0 };
+  }
+  function breathWav(sched) {
+    const SR = 16000, n = Math.ceil((sched.length + 0.4) * SR), pcm = new Int16Array(n);
+    const LO = 174.6, HI = 261.6; let high = false;
+    for (const p of sched.phases) {
+      const s0 = Math.floor(p.start * SR), len = Math.floor(p.dur * SR);
+      const from = p.kind === 'in' ? LO : p.kind === 'out' ? HI : (high ? HI : LO);
+      const to = p.kind === 'in' ? HI : p.kind === 'out' ? LO : from;
+      const amp = p.kind === 'hold' ? 0.03 : 0.1, bell = p.kind === 'in' ? 784 : p.kind === 'out' ? 587 : 659;
+      let ph = 0;
+      for (let i = 0; i < len && s0 + i < n; i++) {
+        const t = i / SR, k = i / len;
+        const f = from + (to - from) * (0.5 - 0.5 * Math.cos(Math.PI * k));
+        ph += 2 * Math.PI * f / SR;
+        const env = Math.max(0, Math.min(1, t / 0.35, (p.dur - t) / 0.35));
+        let v = amp * env * (Math.sin(ph) + 0.3 * Math.sin(2 * ph));
+        if (t < 1.2) v += 0.08 * Math.exp(-t * 4) * Math.sin(2 * Math.PI * bell * t);
+        pcm[s0 + i] = Math.max(-1, Math.min(1, v)) * 32767;
+      }
+      if (p.kind === 'in') high = true; else if (p.kind === 'out') high = false;
+    }
+    const buf = new ArrayBuffer(44 + n * 2), dv = new DataView(buf);
+    const ws = (o, s) => { for (let i = 0; i < s.length; i++) dv.setUint8(o + i, s.charCodeAt(i)); };
+    ws(0, 'RIFF'); dv.setUint32(4, 36 + n * 2, true); ws(8, 'WAVE'); ws(12, 'fmt '); dv.setUint32(16, 16, true);
+    dv.setUint16(20, 1, true); dv.setUint16(22, 1, true); dv.setUint32(24, SR, true); dv.setUint32(28, SR * 2, true);
+    dv.setUint16(32, 2, true); dv.setUint16(34, 16, true); ws(36, 'data'); dv.setUint32(40, n * 2, true);
+    new Int16Array(buf, 44).set(pcm);
+    return new Blob([buf], { type: 'audio/wav' });
+  }
+
   function compBreathe(el, o) {
-    let pattern = S.breathPattern, minutes = o.sos ? 1 : S.breathMinutes, running = false, timers = [];
+    let pattern = S.breathPattern, minutes = o.sos ? 1 : S.breathMinutes, running = false;
+    let sched = null, audio = null, audioUrl = null, t0 = 0, lastIdx = -1, loop = null;
     el.innerHTML = `
       ${o.sos ? '' : `
       <div class="field-label">${te('br_pattern')}</div>
       <div class="chips" id="pat">${Object.keys(PATTERNS).map(p => `<button class="chip" data-p="${p}" aria-pressed="${p === pattern}">${te(PATTERN_LABEL[p])}</button>`).join('')}</div>
       <div class="field-label">${te('br_length')}</div>
       <div class="chips" id="len">${LENGTHS.map(m => `<button class="chip" data-m="${m}" aria-pressed="${m === minutes}">${te('min', { n: m })}</button>`).join('')}</div>`}
+      <div class="center"><button class="chip snd" id="snd" aria-pressed="${S.tone}"></button></div>
       <div class="breath-wrap"><div class="breath-halo"></div><div class="breath-circle" id="bc" data-phase="rest"></div>
         <div class="breath-text"><div class="breath-label" id="bl" aria-live="polite"></div><div class="breath-num" id="bn" aria-hidden="true"></div></div></div>
       <p class="center muted" id="bt"></p>
       <p class="center hint" id="bmsg">${te('br_ready')}</p>
       ${o.sos ? '' : `<div class="center"><button class="btn primary big-btn" id="bgo">${te('start')}</button></div>`}`;
     const bc = $('#bc', el), bl = $('#bl', el), bn = $('#bn', el), bt = $('#bt', el), bmsg = $('#bmsg', el), bgo = $('#bgo', el);
-    const clear = () => { timers.forEach(clearTimeout); timers = []; };
-    onCleanup(() => { running = false; clear(); });
-    const setCircle = (kind, secs) => { bc.style.transitionDuration = secs + 's'; if (kind !== 'hold') bc.dataset.phase = kind; bc.classList.toggle('holding', kind === 'hold'); };
-    const cue = kind => {
-      if (S.vibrate && navigator.vibrate) navigator.vibrate(kind === 'hold' ? 20 : 45);
-      if (S.tone) beep(kind === 'in' ? 392 : kind === 'out' ? 294 : 330);
+    const snd = $('#snd', el);
+    const paintSnd = () => { snd.setAttribute('aria-pressed', S.tone); snd.innerHTML = `${ICON.sound}<span>${te(S.tone ? 'snd_on' : 'snd_off')}</span>`; };
+    paintSnd();
+    const stopTrack = () => {
+      if (audio) { try { audio.pause(); } catch (e) { } audio.removeAttribute('src'); audio = null; }
+      if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
+      clearMediaSession();
     };
+    const elapsed = () => (audio ? audio.currentTime : (performance.now() - t0) / 1000);
+    const setCircle = (kind, secs) => { bc.style.transitionDuration = secs + 's'; if (kind !== 'hold') bc.dataset.phase = kind; bc.classList.toggle('holding', kind === 'hold'); };
     function reset(msgKey) {
-      running = false; clear();
+      running = false; clearInterval(loop); loop = null; stopTrack(); lastIdx = -1;
       bl.textContent = ''; bn.textContent = ''; bt.textContent = '';
       bc.style.transitionDuration = '1.2s'; bc.dataset.phase = 'rest'; bc.classList.remove('holding');
       bmsg.textContent = t(msgKey);
       if (bgo) bgo.textContent = t('start');
     }
-    function start() {
-      running = true; ensureAudioCtx(); keepAwake();
-      const ph = PATTERNS[pattern], total = minutes * 60;
-      let elapsed = 0, idx = 0;
-      bmsg.textContent = ''; if (bgo) bgo.textContent = t('stop');
-      const runPhase = () => {
-        if (!running) return;
-        if (idx === 0 && elapsed >= total) { reset('br_done'); if (o.onDone) o.onDone(); return; }
-        const [kind, secs] = ph[idx];
-        bl.textContent = t('br_' + kind); cue(kind); setCircle(kind, secs);
-        let left = secs; bn.textContent = left; bt.textContent = mmss(total - elapsed);
-        const tick = () => {
-          if (!running) return;
-          left--; elapsed++; bt.textContent = mmss(total - elapsed);
-          if (left > 0) { bn.textContent = left; timers.push(setTimeout(tick, 1000)); }
-          else { idx = (idx + 1) % ph.length; runPhase(); }
-        };
-        timers.push(setTimeout(tick, 1000));
-      };
-      runPhase();
+    onCleanup(() => { running = false; clearInterval(loop); stopTrack(); });
+    // The state is always computed from elapsed time (or the audio position), so it stays correct after the screen was off.
+    function tick() {
+      if (!running) return;
+      const e = elapsed();
+      if (e >= sched.length) { reset('br_done'); if (o.onDone) o.onDone(); return; }
+      if (audio && audio.paused && e > 0) { bl.textContent = t('pause'); bn.textContent = ''; lastIdx = -1; return; }
+      let idx = sched.phases.findIndex(p => e < p.start + p.dur); if (idx < 0) idx = sched.phases.length - 1;
+      const p = sched.phases[idx], left = p.start + p.dur - e;
+      if (idx !== lastIdx) {
+        lastIdx = idx; bl.textContent = t('br_' + p.kind); setCircle(p.kind, Math.max(0.2, left));
+        if (S.vibrate && navigator.vibrate && !document.hidden) navigator.vibrate(p.kind === 'hold' ? 20 : 45);
+      }
+      bn.textContent = Math.max(1, Math.ceil(left - 0.05)); bt.textContent = mmss(sched.length - e);
     }
+    function start() {
+      sched = breathSchedule(pattern, minutes); running = true; lastIdx = -1; keepAwake();
+      bmsg.textContent = ''; if (bgo) bgo.textContent = t('stop');
+      stopAudio();
+      if (S.tone) {
+        try {
+          audioUrl = URL.createObjectURL(breathWav(sched));
+          audio = new Audio(audioUrl);
+          audio.onended = tick;
+          setMediaSession(`${t('t_breathe')} · ${t(PATTERN_LABEL[pattern])}`, {
+            play: () => audio && audio.play().catch(() => { }),
+            pause: () => audio && audio.pause(),
+            stop: () => reset('br_ready')
+          });
+          audio.play().catch(() => { stopTrack(); t0 = performance.now(); });
+        } catch (e) { stopTrack(); }
+      }
+      t0 = performance.now();
+      tick(); loop = setInterval(tick, 200);
+    }
+    snd.onclick = () => { S.tone = !S.tone; save(); paintSnd(); if (running) reset('br_ready'); };
     if (bgo) bgo.onclick = () => (running ? reset('br_ready') : start());
     const pat = $('#pat', el), len = $('#len', el);
     if (pat) pat.onclick = e => {
@@ -399,7 +511,7 @@
       len.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', c === b));
       if (running) reset('br_ready');
     };
-    if (o.sos) later(start, 600);
+    if (o.sos) start();   // started inside the tap, so the sound may play (iOS)
   }
 
   function compSenses(el, o) {
@@ -476,6 +588,7 @@
         <h2 class="section-title">${te('tools')}</h2>
         <div class="tiles">${tiles.map(([go, k, ic]) => `<button class="tile" data-go="${go}"><span class="tile-ic">${ic}</span><span class="tile-t">${te(k)}</span><span class="tile-d">${te(k + '_d')}</span></button>`).join('')}</div>
         <button class="tile wide help-tile" data-go="help"><span class="tile-ic">${ICON.heart}</span><span><span class="tile-t">${te('t_help')}</span><span class="tile-d">${te('t_help_d')}</span></span></button>
+        <button class="tile wide" data-go="why"><span class="tile-ic">${ICON.info}</span><span><span class="tile-t">${te('why_link')}</span><span class="tile-d">${te('why_link_d')}</span></span></button>
       `, true);
     },
 
@@ -567,7 +680,7 @@
         const b = e.target.closest('[data-a]'); if (!b || b.dataset.a === 'name') return;
         const id = b.closest('[data-id]').dataset.id, r = recs.find(x => x.id === id); if (!r) return;
         if (b.dataset.a === 'play') {
-          if (playingId === id) stopAudio(); else playBlob(r.blob, id, list);
+          if (playingId === id) stopAudio(); else playBlob(r.blob, id, list, r.name);
           list();
         } else if (b.dataset.a === 'sos') {
           S.sosRecId = S.sosRecId === id ? null : id; save(); list();
@@ -677,6 +790,12 @@
         <section class="card set">
           <h2 class="set-title">${te('set_look')}</h2>
           ${chips('theme', [['calm', t('theme_calm')], ['night', t('theme_night')], ['contrast', t('theme_contrast')]])}
+          <div class="field-label">${te('set_color')}</div>
+          <div class="swatches" id="swatches">
+            ${ACCENTS.map(([n, c]) => `<button class="sw-btn" data-c="${c}" style="background:${c}" aria-pressed="${S.accent === c}" aria-label="${te('col_' + n)}" title="${te('col_' + n)}"></button>`).join('')}
+            <label class="sw-btn sw-custom" title="${te('col_custom')}" aria-pressed="${!ACCENTS.some(([, c]) => c === S.accent)}"><input type="color" id="swc" value="${S.accent}" aria-label="${te('col_custom')}"></label>
+          </div>
+          <p class="hint">${te('set_color_d')}</p>
           <div class="field-label">${te('set_text')}</div>
           ${chips('textSize', [['normal', t('size_normal')], ['large', t('size_large')], ['xl', t('size_xl')]])}
           ${toggle('reduceMotion', t('set_motion'), t('set_motion_d'))}
@@ -686,7 +805,7 @@
           <div class="field-label">${te('set_breath_default')}</div>
           ${chips('breathPattern', Object.keys(PATTERNS).map(p => [p, t(PATTERN_LABEL[p])]))}
           ${toggle('vibrate', t('set_vibe'))}
-          ${toggle('tone', t('set_tone'))}
+          ${toggle('tone', t('set_tone'), t('set_tone_d'))}
         </section>
         <section class="card set">
           <h2 class="set-title">${te('set_sos')}</h2>
@@ -714,6 +833,13 @@
           <div class="stack"><button class="btn primary" data-act="share">${ICON.share}<span>${te('share_title')}</span></button></div>
         </section>
         <section class="card set">
+          <h2 class="set-title">${te('qa_title')}</h2>
+          <h3 class="qa-h">Android</h3><p>${te('qa_android')}</p>
+          <h3 class="qa-h">iPhone</h3><p>${te('qa_ios')}</p>
+          <p class="link-text">${esc(APP_URL + '?sos=1')}</p>
+          <div class="stack"><button class="btn" id="qaCopy">${ICON.link}<span>${te('qa_copy')}</span></button></div>
+        </section>
+        <section class="card set">
           <h2 class="set-title">${te('set_data')}</h2>
           <p class="muted">${te('set_data_d')}</p>
           <div class="stack">
@@ -727,6 +853,7 @@
           <p>${te('about_text')}</p>
           <div class="stack">
             <a class="btn coffee" href="${BMC_URL}" target="_blank" rel="noopener noreferrer">${ICON.coffee}<span>${te('bmc')}</span></a>
+            <button class="btn ghost" data-go="why">${ICON.info}<span>${te('why_link')}</span></button>
             <button class="btn ghost" data-go="terms">${te('terms_title')}</button>
           </div>
           <p class="muted center small">PaKuGrounding · ${te('version', { v: APP_VERSION })}</p>
@@ -753,6 +880,14 @@
       });
       const ib = $('#installBtn');
       if (ib) ib.onclick = async () => { if (!deferredPrompt) return; deferredPrompt.prompt(); try { await deferredPrompt.userChoice; } catch (e) { } deferredPrompt = null; const s = $('#installSec'); if (s) s.hidden = true; };
+      const swr = $('#swatches');
+      const setAccent = c => {
+        S.accent = c.toLowerCase(); save(); applyLook();
+        swr.querySelectorAll('.sw-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.c ? b.dataset.c === S.accent : !ACCENTS.some(([, x]) => x === S.accent)));
+      };
+      swr.addEventListener('click', e => { const b = e.target.closest('[data-c]'); if (b) setAccent(b.dataset.c); });
+      $('#swc').addEventListener('input', e => setAccent(e.target.value));
+      $('#qaCopy').onclick = async () => { if (await copyText(APP_URL + '?sos=1')) toast(t('copied')); };
       $('#exp').onclick = exportData;
       $('#imp').onchange = e => { const f = e.target.files && e.target.files[0]; if (f) importData(f); e.target.value = ''; };
       $('#wipe').onclick = async () => {
@@ -762,6 +897,12 @@
         try { await DB.clear(); } catch (e) { }
         location.replace(location.pathname);
       };
+    },
+
+    why() {
+      const parts = [['why_h_for', 'why_for'], ['why_h_works', 'why_works'], ['why_h_helps', 'why_helps'], ['why_h_tips', 'why_tips'], ['why_h_limits', 'why_limits']];
+      app.innerHTML = frame(t('why_link'), parts.map(([h, p]) => `<section class="card why"><h2>${te(h)}</h2><p>${te(p)}</p></section>`).join('') +
+        `<div class="center"><button class="btn primary big-btn" data-act="sos">${ICON.anchor}<span>${te('sos_btn')}</span></button></div>`);
     },
 
     terms() {
