@@ -1,7 +1,8 @@
 /* PaKuGrounding – offline grounding app. All data stays on the device. */
 'use strict';
 (() => {
-  const APP_VERSION = '1.0.2';
+  const APP_VERSION = '1.0.3';
+  const APP_URL = 'https://zondelekpp-wq.github.io/PaKuGrounding/';   // the QR code in qr.svg points here
   const CONTACT_EMAIL = 'zondelek.p.p@gmail.com';                       // e.g. 'kontakt@example.com' – shown in Terms & privacy when set
   const BMC_URL = 'https://buymeacoffee.com/Hieronim';
   const LANGS = [['en', 'English'], ['pl', 'Polski'], ['de', 'Deutsch'], ['es', 'Español'], ['fr', 'Français'], ['zh', '中文'], ['uk', 'Українська']];
@@ -104,6 +105,8 @@
     star: sv('<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>'),
     coffee: sv('<path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17M8 3v3M12 3v3"/>'),
     upload: sv('<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>'),
+    share: sv('<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>'),
+    link: sv('<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'),
     download: sv('<path d="M12 4v12M7 11l5 5 5-5M5 20h14"/>')
   };
 
@@ -214,6 +217,31 @@
       }));
   }
 
+  function shareModal() {
+    modal(`<h2 class="modal-title">${ICON.share}<span>${te('share_title')}</span></h2>
+      <div class="qr-box"><img src="qr.svg" alt="QR: ${esc(APP_URL)}" width="240" height="240"></div>
+      <p class="center small muted">${te('share_d')}</p>
+      <p class="center link-text">${esc(APP_URL.replace(/^https:\/\//, ''))}</p>
+      <div class="stack">
+        ${navigator.share ? `<button class="btn primary" data-s="share">${ICON.share}<span>${te('share_btn')}</span></button>` : ''}
+        <button class="btn" data-s="copy">${ICON.link}<span>${te('copy_btn')}</span></button>
+        <button class="btn ghost" data-s="close">${te('close')}</button>
+      </div>`,
+      (el, close) => el.addEventListener('click', async e => {
+        const b = e.target.closest('[data-s]'); if (!b) return;
+        if (b.dataset.s === 'close') close();
+        else if (b.dataset.s === 'share') { try { await navigator.share({ title: 'PaKuGrounding', text: t('share_text'), url: APP_URL }); } catch (err) { } }
+        else if (b.dataset.s === 'copy') {
+          let ok = false;
+          try { await navigator.clipboard.writeText(APP_URL); ok = true; } catch (err) {
+            const ta = document.createElement('textarea'); ta.value = APP_URL; document.body.appendChild(ta); ta.select();
+            try { ok = document.execCommand('copy'); } catch (e2) { } ta.remove();
+          }
+          if (ok) toast(t('copied'));
+        }
+      }));
+  }
+
   /* ---------- router ---------- */
   const app = $('#app');
   let current = { screen: 'home', params: {} }, depth = 0;
@@ -238,7 +266,7 @@
     return `<header class="bar">${home
       ? `<div class="brand"><span class="brand-mark">${ICON.anchor}</span><span class="brand-name">PaKuGrounding</span></div>`
       : `<button class="icon-btn" data-act="back" aria-label="${te('back')}">${ICON.back}</button><h1 class="bar-title">${esc(title)}</h1>`}
-      <div class="bar-actions"><button class="icon-btn" data-act="lang" aria-label="${te('language')}">${ICON.globe}</button>${home ? `<button class="icon-btn" data-act="settings" aria-label="${te('settings')}">${ICON.settings}</button>` : ''}</div>
+      <div class="bar-actions">${home ? `<button class="icon-btn" data-act="share" aria-label="${te('share_title')}">${ICON.share}</button>` : ''}<button class="icon-btn" data-act="lang"aria-label="${te('language')}">${ICON.globe}</button>${home ? `<button class="icon-btn" data-act="settings" aria-label="${te('settings')}">${ICON.settings}</button>` : ''}</div>
       </header><main class="main" id="main">${body}</main>`;
   }
 
@@ -250,6 +278,7 @@
       case 'back': goBack(); break;
       case 'settings': show('settings'); break;
       case 'lang': langPicker(); break;
+      case 'share': shareModal(); break;
       case 'sos': show('sos'); break;
       case 'tip': S.tipDismissed = true; save(); a.closest('.tip').remove(); break;
     }
@@ -679,6 +708,11 @@
           <h2 class="set-title">${te('install')}</h2>
           ${ios && !deferredPrompt ? `<p>${te('install_ios')}</p>` : `<button class="btn primary" id="installBtn">${ICON.download}<span>${te('install')}</span></button>`}
         </section>`}
+        <section class="card set">
+          <h2 class="set-title">${te('share_title')}</h2>
+          <p class="muted">${te('share_d')}</p>
+          <div class="stack"><button class="btn primary" data-act="share">${ICON.share}<span>${te('share_title')}</span></button></div>
+        </section>
         <section class="card set">
           <h2 class="set-title">${te('set_data')}</h2>
           <p class="muted">${te('set_data_d')}</p>

@@ -1,6 +1,12 @@
 /* PaKuGrounding – translations. English is the default and the fallback for any missing key. */
 window.I18N = {
   en: {
+    share_title: "Share the app",
+    share_d: "Scan the QR code with a phone camera to open and install PaKuGrounding.",
+    share_btn: "Share link",
+    copy_btn: "Copy link",
+    copied: "Link copied.",
+    share_text: "PaKuGrounding – free offline grounding tools",
     tagline: "You are here. You are now.",
     sos_btn: "I need help now",
     sos_sub: "A short guided sequence, step by step",
@@ -100,6 +106,12 @@ window.I18N = {
   },
 
   pl: {
+    share_title: "Udostępnij aplikację",
+    share_d: "Zeskanuj kod QR aparatem telefonu, aby otworzyć i zainstalować PaKuGrounding.",
+    share_btn: "Udostępnij link",
+    copy_btn: "Kopiuj link",
+    copied: "Link skopiowany.",
+    share_text: "PaKuGrounding – darmowe narzędzia uziemiające offline",
     tagline: "Jesteś tutaj. Jesteś teraz.",
     sos_btn: "Potrzebuję pomocy teraz",
     sos_sub: "Krótka sesja uziemiająca, krok po kroku",
@@ -199,6 +211,12 @@ window.I18N = {
   },
 
   de: {
+    share_title: "App teilen",
+    share_d: "Scanne den QR-Code mit der Handykamera, um PaKuGrounding zu öffnen und zu installieren.",
+    share_btn: "Link teilen",
+    copy_btn: "Link kopieren",
+    copied: "Link kopiert.",
+    share_text: "PaKuGrounding – kostenlose Erdungsübungen, auch offline",
     tagline: "Du bist hier. Du bist jetzt.",
     sos_btn: "Ich brauche jetzt Hilfe",
     sos_sub: "Eine kurze Erdungsübung, Schritt für Schritt",
@@ -298,6 +316,12 @@ window.I18N = {
   },
 
   es: {
+    share_title: "Compartir la app",
+    share_d: "Escanea el código QR con la cámara del móvil para abrir e instalar PaKuGrounding.",
+    share_btn: "Compartir enlace",
+    copy_btn: "Copiar enlace",
+    copied: "Enlace copiado.",
+    share_text: "PaKuGrounding: herramientas gratuitas de anclaje, sin conexión",
     tagline: "Estás aquí. Estás en el ahora.",
     sos_btn: "Necesito ayuda ahora",
     sos_sub: "Una breve secuencia de anclaje, paso a paso",
@@ -397,6 +421,12 @@ window.I18N = {
   },
 
   fr: {
+    share_title: "Partager l'app",
+    share_d: "Scanne le code QR avec l'appareil photo d'un téléphone pour ouvrir et installer PaKuGrounding.",
+    share_btn: "Partager le lien",
+    copy_btn: "Copier le lien",
+    copied: "Lien copié.",
+    share_text: "PaKuGrounding – des outils d'ancrage gratuits, hors ligne",
     tagline: "Tu es ici. Tu es maintenant.",
     sos_btn: "J'ai besoin d'aide maintenant",
     sos_sub: "Une courte séance d'ancrage, pas à pas",
@@ -496,6 +526,12 @@ window.I18N = {
   },
 
   zh: {
+    share_title: "分享应用",
+    share_d: "用手机相机扫描二维码，即可打开并安装 PaKuGrounding。",
+    share_btn: "分享链接",
+    copy_btn: "复制链接",
+    copied: "链接已复制。",
+    share_text: "PaKuGrounding——免费的离线着陆练习工具",
     tagline: "你在这里。你在此刻。",
     sos_btn: "我现在需要帮助",
     sos_sub: "简短的着陆练习，一步一步来",
@@ -595,6 +631,12 @@ window.I18N = {
   },
 
   uk: {
+    share_title: "Поділитися застосунком",
+    share_d: "Відскануй QR-код камерою телефона, щоб відкрити й установити PaKuGrounding.",
+    share_btn: "Поділитися посиланням",
+    copy_btn: "Копіювати посилання",
+    copied: "Посилання скопійовано.",
+    share_text: "PaKuGrounding — безкоштовні вправи на заземлення офлайн",
     tagline: "Ти тут. Ти зараз.",
     sos_btn: "Мені потрібна допомога зараз",
     sos_sub: "Коротка вправа на заземлення, крок за кроком",
