@@ -1,7 +1,7 @@
 /* PaKuGrounding – offline grounding app. All data stays on the device. */
 'use strict';
 (() => {
-  const APP_VERSION = '1.2.1';
+  const APP_VERSION = '1.2.2';
   const DEFAULT_ACCENT = '#7a5ca8';
   const ACCENTS = [['lavender', '#7a5ca8'], ['blue', '#3f6fb5'], ['teal', '#2f8a85'], ['green', '#4f8a4f'], ['rose', '#b0507a'], ['amber', '#b5762a'], ['grey', '#646a78']];
   const APP_URL = 'https://zondelekpp-wq.github.io/PaKuGrounding/';   // the QR code in qr.svg points here
