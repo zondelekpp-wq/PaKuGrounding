@@ -1,7 +1,10 @@
 /* PaKuGrounding – offline grounding app. All data stays on the device. */
 'use strict';
 (() => {
-  const APP_VERSION = '1.2.2';
+  const APP_VERSION = '1.3.0';
+  /* PaKu family: this app works alone; the family screen only shows the other apps */
+  const F = window.PaKuFamily || null;
+  const SELF = 'grounding';
   const DEFAULT_ACCENT = '#7a5ca8';
   const ACCENTS = [['lavender', '#7a5ca8'], ['blue', '#3f6fb5'], ['teal', '#2f8a85'], ['green', '#4f8a4f'], ['rose', '#b0507a'], ['amber', '#b5762a'], ['grey', '#646a78']];
   const APP_URL = 'https://zondelekpp-wq.github.io/PaKuGrounding/';   // the QR code in qr.svg points here
@@ -58,6 +61,7 @@
   function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) { } }
 
   let S = load();
+  const ft = k => (F ? F.t(k, S.lang) : k);
 
   /* ---------- helpers ---------- */
   function t(k, v) {
@@ -110,6 +114,7 @@
     coffee: sv('<path d="M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5z"/><path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17M8 3v3M12 3v3"/>'),
     upload: sv('<path d="M12 16V4M7 9l5-5 5 5M5 20h14"/>'),
     info: sv('<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/>'),
+    leaf: sv('<polygon stroke-width="1.6" points="12.0,2.0 13.8,5.8 16.2,4.6 15.4,9.8 19.0,6.6 19.8,8.6 22.6,8.0 21.0,11.8 22.4,12.6 17.0,16.2 17.8,18.6 13.0,17.6 13.0,22.0 11.0,22.0 11.0,17.6 6.2,18.6 7.0,16.2 1.6,12.6 3.0,11.8 1.4,8.0 4.2,8.6 5.0,6.6 8.6,9.8 7.8,4.6 10.2,5.8"/>'),
     sound: sv('<path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/>'),
     share: sv('<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="M8.2 10.8l7.6-4.4M8.2 13.2l7.6 4.4"/>'),
     link: sv('<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'),
@@ -589,6 +594,7 @@
         <div class="tiles">${tiles.map(([go, k, ic]) => `<button class="tile" data-go="${go}"><span class="tile-ic">${ic}</span><span class="tile-t">${te(k)}</span><span class="tile-d">${te(k + '_d')}</span></button>`).join('')}</div>
         <button class="tile wide help-tile" data-go="help"><span class="tile-ic">${ICON.heart}</span><span><span class="tile-t">${te('t_help')}</span><span class="tile-d">${te('t_help_d')}</span></span></button>
         <button class="tile wide" data-go="why"><span class="tile-ic">${ICON.info}</span><span><span class="tile-t">${te('why_link')}</span><span class="tile-d">${te('why_link_d')}</span></span></button>
+        ${F ? `<button class="tile wide" data-go="family"><span class="tile-ic">${ICON.leaf}</span><span><span class="tile-t">${esc(ft('fam_title'))}</span><span class="tile-d">${esc(ft('fam_d'))}</span></span></button>` : ''}
       `, true);
     },
 
@@ -854,6 +860,7 @@
           <div class="stack">
             <a class="btn coffee" href="${BMC_URL}" target="_blank" rel="noopener noreferrer">${ICON.coffee}<span>${te('bmc')}</span></a>
             <button class="btn ghost" data-go="why">${ICON.info}<span>${te('why_link')}</span></button>
+            ${F ? `<button class="btn ghost" data-go="family">${ICON.leaf}<span>${esc(ft('fam_title'))}</span></button>` : ''}
             <button class="btn ghost" data-go="terms">${te('terms_title')}</button>
           </div>
           <p class="muted center small">PaKuGrounding · ${te('version', { v: APP_VERSION })}</p>
@@ -903,6 +910,25 @@
       const parts = [['why_h_for', 'why_for'], ['why_h_works', 'why_works'], ['why_h_helps', 'why_helps'], ['why_h_tips', 'why_tips'], ['why_h_limits', 'why_limits']];
       app.innerHTML = frame(t('why_link'), parts.map(([h, p]) => `<section class="card why"><h2>${te(h)}</h2><p>${te(p)}</p></section>`).join('') +
         `<div class="center"><button class="btn primary big-btn" data-act="sos">${ICON.anchor}<span>${te('sos_btn')}</span></button></div>`);
+    },
+
+    family() {
+      if (!F) { show('home', {}, false); return; }
+      const paint = () => {
+        app.innerHTML = frame(ft('fam_title'), `<p class="muted">${esc(ft('fam_d'))}</p>
+          <ul class="list fam">${F.all().map(a => {
+            const me = a.id === SELF, used = me || F.used(a.id);
+            return `<li class="card fam-app${me ? ' me' : ''}">
+              <div class="fam-head"><img class="fam-ic" src="${esc(F.icon(a))}" alt="" width="48" height="48" onerror="this.style.visibility='hidden'">
+                <span class="grow"><strong>${esc(a.name)}</strong><small class="muted">${esc(F.desc(a, S.lang))}</small>
+                ${me ? `<small class="fam-tag">${esc(ft('fam_this'))}</small>` : used ? `<small class="fam-tag">${ICON.check}${esc(ft('fam_used'))}</small>` : ''}</span>
+                ${me ? '' : `<a class="btn small${used ? ' primary' : ''}" href="${esc(F.url(a))}" target="_blank" rel="noopener">${esc(ft(used ? 'fam_open' : 'fam_get'))}</a>`}</div>
+            </li>`;
+          }).join('')}</ul>
+          <a class="btn wide" href="${esc(F.hub)}" target="_blank" rel="noopener">${ICON.leaf}<span>${esc(ft('fam_hub'))}</span></a>`);
+      };
+      paint();
+      F.detect().then(() => { if (current.screen === 'family') paint(); });
     },
 
     terms() {
@@ -980,4 +1006,5 @@
   show('home', {}, false);
   if (startSOS) show('sos');
   setupSW();
+  if (F) F.detect().then(() => F.refresh());
 })();
