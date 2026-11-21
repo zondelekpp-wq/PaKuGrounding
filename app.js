@@ -1,7 +1,7 @@
 /* PaKuGrounding – offline grounding app. All data stays on the device. */
 'use strict';
 (() => {
-  const APP_VERSION = '1.3.0';
+  const APP_VERSION = '1.4.0';
   /* PaKu family: this app works alone; the family screen only shows the other apps */
   const F = window.PaKuFamily || null;
   const SELF = 'grounding';
@@ -10,8 +10,8 @@
   const APP_URL = 'https://zondelekpp-wq.github.io/PaKuGrounding/';   // the QR code in qr.svg points here
   const CONTACT_EMAIL = 'zondelek.p.p@gmail.com';                       // e.g. 'kontakt@example.com' – shown in Terms & privacy when set
   const BMC_URL = 'https://buymeacoffee.com/Hieronim';
-  const LANGS = [['en', 'English'], ['pl', 'Polski'], ['de', 'Deutsch'], ['es', 'Español'], ['fr', 'Français'], ['zh', '中文'], ['uk', 'Українська']];
-  const LOCALES = { en: 'en-GB', pl: 'pl-PL', de: 'de-DE', es: 'es-ES', fr: 'fr-FR', zh: 'zh-CN', uk: 'uk-UA' };
+  const LANGS = [['en', 'English'], ['pl', 'Polski'], ['de', 'Deutsch'], ['es', 'Español'], ['fr', 'Français'], ['zh', '中文'], ['uk', 'Українська'], ['lv', 'Latviešu']];
+  const LOCALES = { en: 'en-GB', pl: 'pl-PL', de: 'de-DE', es: 'es-ES', fr: 'fr-FR', zh: 'zh-CN', uk: 'uk-UA', lv: 'lv-LV' };
   const KEY = 'pakugrounding.v1';
   const PATTERNS = { calm: [['in', 4], ['out', 6]], box: [['in', 4], ['hold', 4], ['out', 4], ['hold', 4]], r478: [['in', 4], ['hold', 7], ['out', 8]] };
   const PATTERN_LABEL = { calm: 'br_calm', box: 'br_box', r478: 'br_478' };

@@ -1,7 +1,7 @@
 # PaKuGrounding
 
 Aplikacja PWA z narzędziami uziemiającymi (rodzina PaKu). Działa w pełni offline.
-Języki: EN (domyślny), PL, DE, ES, FR, ZH, UK.
+Języki: EN (domyślny), PL, DE, ES, FR, ZH, UK, LV.
 
 ## Pliki
 - `index.html` – układ i style
