@@ -1,7 +1,7 @@
 /* PaKuGrounding – offline grounding app. All data stays on the device. */
 'use strict';
 (() => {
-  const APP_VERSION = '1.4.1';
+  const APP_VERSION = '1.4.2';
   /* PaKu family: this app works alone; the family screen only shows the other apps */
   const F = window.PaKuFamily || null;
   const SELF = 'grounding';
@@ -985,7 +985,9 @@
     let wantReload = false;
     navigator.serviceWorker.addEventListener('controllerchange', () => { if (wantReload) { wantReload = false; location.reload(); } });
     navigator.serviceWorker.register('./sw.js').then(reg => {
-      const offer = w => toast(t('update_ready'), t('reload'), () => { wantReload = true; w.postMessage('SKIP_WAITING'); });
+      /* on the home screen a new version is applied at once; during an exercise the user decides */
+      const offer = w => { if (current.screen === 'home') { wantReload = true; w.postMessage('SKIP_WAITING'); return; } toast(t('update_ready'), t('reload'), () => { wantReload = true; w.postMessage('SKIP_WAITING'); }); };
+      document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') reg.update().catch(() => { }); });
       if (reg.waiting && navigator.serviceWorker.controller) offer(reg.waiting);
       reg.addEventListener('updatefound', () => {
         const w = reg.installing; if (!w) return;
