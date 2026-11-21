@@ -1,7 +1,7 @@
 /* PaKuGrounding – offline grounding app. All data stays on the device. */
 'use strict';
 (() => {
-  const APP_VERSION = '1.4.3';
+  const APP_VERSION = '1.4.4';
   /* PaKu family: this app works alone; the family screen only shows the other apps */
   const F = window.PaKuFamily || null;
   const SELF = 'grounding';
